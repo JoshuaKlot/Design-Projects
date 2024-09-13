@@ -56,9 +56,14 @@ int dijkstra(int start, int end, struct Edge** graph, int* num_edges, int num_ve
     return (result == INF) ? -1 : result; // Return -1 if unreachable
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     int num_vertices, num_edges;
 
+    if(argc!=3)
+    {
+        printf("Usage: %s <start_vertex> <end_vertex> < inputfile\n", argv[0]);
+        return 1;
+    }
     // Read number of vertices and edges
     if (scanf("%d %d", &num_vertices, &num_edges) != 2) {
         fprintf(stderr, "Error reading number of vertices and edges.\n");
@@ -86,10 +91,8 @@ int main() {
     }
 
     // Read start and end vertices from the command line
-    if (scanf("%d %d", &start_vertex, &end_vertex) != 2) {
-        fprintf(stderr, "Error reading start and end vertices.\n");
-        return 1;
-    }
+    start_vertex=(argv[1])
+    end_vertex=(argv[2])
 
     // Find the shortest path from start_vertex to end_vertex
     int shortest_path = dijkstra(start_vertex, end_vertex, graph, num_edges_per_vertex, num_vertices);
