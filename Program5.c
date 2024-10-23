@@ -5,7 +5,7 @@
 #include <limits.h>
 
 #define MAX_VERTICES 1000  // Adjust based on expected graph size
-int bfs(int residualGraph[MAX_VERTICES][MAX_VERTICES], int source, int sink, int parent[], int numVertices) {
+int bfs(long long residualGraph[MAX_VERTICES][MAX_VERTICES], int source, int sink, int parent[], int numVertices) {
     int *visited = (int *)malloc(numVertices * sizeof(int));  // Dynamically allocate memory for visited
     memset(visited, 0, numVertices * sizeof(int));
 
@@ -40,7 +40,7 @@ int bfs(int residualGraph[MAX_VERTICES][MAX_VERTICES], int source, int sink, int
 
 // Function to implement the Edmonds-Karp algorithm
 int edmondsKarp(int graph[MAX_VERTICES][MAX_VERTICES], int source, int sink, int numVertices) {
-    int residualGraph[MAX_VERTICES][MAX_VERTICES];
+    long long residualGraph[MAX_VERTICES][MAX_VERTICES];
     int u, v;
 
     // Initialize the residual graph with the capacities
