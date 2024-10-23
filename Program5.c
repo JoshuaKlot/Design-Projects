@@ -5,13 +5,12 @@
 #include <limits.h>
 
 #define MAX_VERTICES 1000  // Adjust based on expected graph size
+int bfs(int residualGraph[MAX_VERTICES][MAX_VERTICES], int source, int sink, int parent[], int numVertices) {
+    int *visited = (int *)malloc(numVertices * sizeof(int));  // Dynamically allocate memory for visited
+    memset(visited, 0, numVertices * sizeof(int));
 
-// Function to perform BFS and find an augmenting path
-int bfs(int residualGraph[MAX_VERTICES][MAX_VERTICES], int source, int sink, int parent[], int V) {
-    int visited[V];
-    memset(visited, 0, sizeof(visited));
-    
-    int queue[V], front = 0, rear = 0;
+    int *queue = (int *)malloc(numVertices * sizeof(int));  // Dynamically allocate memory for queue
+    int front = 0, rear = 0;
     queue[rear++] = source;
     visited[source] = 1;
     parent[source] = -1;
@@ -19,46 +18,50 @@ int bfs(int residualGraph[MAX_VERTICES][MAX_VERTICES], int source, int sink, int
     while (front < rear) {
         int u = queue[front++];
         
-        for (int v = 0; v < V; v++) {
+        for (int v = 0; v < numVertices; v++) {
             if (!visited[v] && residualGraph[u][v] > 0) {
                 queue[rear++] = v;
                 parent[v] = u;
                 visited[v] = 1;
                 
                 if (v == sink) {
+                    free(visited);
+                    free(queue);
                     return 1;  // Path found
                 }
             }
         }
     }
     
+    free(visited);  // Free allocated memory after usage
+    free(queue);
     return 0;  // No augmenting path
 }
 
 // Function to implement the Edmonds-Karp algorithm
-int edmondsKarp(int graph[MAX_VERTICES][MAX_VERTICES], int source, int sink, int V) {
+int edmondsKarp(int graph[MAX_VERTICES][MAX_VERTICES], int source, int sink, int numVertices) {
     int residualGraph[MAX_VERTICES][MAX_VERTICES];
     int u, v;
-    
+
     // Initialize the residual graph with the capacities
-    for (u = 0; u < V; u++) {
-        for (v = 0; v < V; v++) {
+    for (u = 0; u < numVertices; u++) {
+        for (v = 0; v < numVertices; v++) {
             residualGraph[u][v] = graph[u][v];
         }
     }
     
-    int parent[V];  // To store the augmenting path
+    int *parent = (int *)malloc(numVertices * sizeof(int));  // Dynamically allocate memory for parent
     int maxFlow = 0;
     
     // Augment the flow while there is an augmenting path
-    while (bfs(residualGraph, source, sink, parent, V)) {
+    while (bfs(residualGraph, source, sink, parent, numVertices)) {
         // Find the minimum residual capacity of the edges along the path
         int pathFlow = INT_MAX;
         for (v = sink; v != source; v = parent[v]) {
             u = parent[v];
             pathFlow = (residualGraph[u][v] < pathFlow) ? residualGraph[u][v] : pathFlow;
         }
-        
+
         // Update the residual capacities of the edges and reverse edges
         for (v = sink; v != source; v = parent[v]) {
             u = parent[v];
@@ -70,6 +73,7 @@ int edmondsKarp(int graph[MAX_VERTICES][MAX_VERTICES], int source, int sink, int
         maxFlow += pathFlow;
     }
     
+    free(parent);  // Free allocated memory after usage
     return maxFlow;
 }
 
