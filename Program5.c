@@ -4,7 +4,9 @@
 #include <string.h>
 #include <limits.h>
 
-#define MAX_VERTICES 1000  // Adjust based on expected graph size
+#define MAX_VERTICES 10000000  // Adjust based on expected graph size
+
+// Function to perform BFS and find an augmenting path
 int bfs(long long residualGraph[MAX_VERTICES][MAX_VERTICES], int source, int sink, int parent[], int numVertices) {
     int *visited = (int *)malloc(numVertices * sizeof(int));  // Dynamically allocate memory for visited
     memset(visited, 0, numVertices * sizeof(int));
@@ -77,10 +79,36 @@ int edmondsKarp(int graph[MAX_VERTICES][MAX_VERTICES], int source, int sink, int
     return maxFlow;
 }
 
+// Function to print the file or the first 10 lines if too large
+void printFile(const char *fileName) {
+    FILE *file = fopen(fileName, "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        exit(1);
+    }
+
+    char line[256];
+    int lineCount = 0;
+    while (fgets(line, sizeof(line), file)) {
+        printf("%s", line);
+        if (++lineCount == 10) {
+            printf("... (file is too large, only first 10 lines displayed)\n");
+            break;
+        }
+    }
+
+    fclose(file);
+}
+
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-        printf("Usage: %s <source> <sink>\n", argv[0]);
-        return 1;
+        if (argc == 2) {
+            // No source and sink provided, print the input file contents
+            printFile(argv[1]);
+        } else {
+            printf("Usage: %s <source> <sink> < <inputfile>\n", argv[0]);
+        }
+        return 0;
     }
 
     int source = atoi(argv[1]);
