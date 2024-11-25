@@ -114,7 +114,7 @@ int select_most_constrained_variable(int **clauses, int num_clauses, int *assign
     }
 
     free(freq);
-    printf("%d is currently the most problemmatic\n",chosen_var+1);
+    //printf("%d is currently the most problemmatic\n",chosen_var+1);
     return chosen_var;
 }
 
@@ -123,18 +123,18 @@ bool dpll(int **clauses, int num_clauses, int *assignments, int num_vars) {
     // Check memoized result
     bool result;
     if (search(assignments, num_vars, &result)) {
-        printf("Memoized result found for current assignment. Returning: %s\n", result ? "true" : "false");
+        //printf("Memoized result found for current assignment. Returning: %s\n", result ? "true" : "false");
         return result;
     }
 
     // Base cases
     if (all_clauses_satisfied(clauses, num_clauses, assignments)) {
-        printf("All clauses satisfied with current assignment. Returning: true\n");
+        //printf("All clauses satisfied with current assignment. Returning: true\n");
         insert(assignments, num_vars, true);
         return true;
     }
     if (any_clause_unsatisfied(clauses, num_clauses, assignments)) {
-        printf("At least one clause unsatisfied with current assignment. Returning: false\n");
+        //printf("At least one clause unsatisfied with current assignment. Returning: false\n");
         //insert(assignments, num_vars, false);
         return false;
     }
@@ -143,38 +143,33 @@ bool dpll(int **clauses, int num_clauses, int *assignments, int num_vars) {
     int var = select_most_constrained_variable(clauses, num_clauses, assignments, num_vars);
 
     if (var == -1) {
-        printf("No variable selected. Likely no unassigned variables remain. Returning: false\n");
+        //printf("No variable selected. Likely no unassigned variables remain. Returning: false\n");
         return false;
     }
 
     // Try assigning true
-    printf("Setting variable %d to true and attempting recursion.\n", var);
+    //printf("Setting variable %d to true and attempting recursion.\n", var);
     assignments[var] = 1;
     if (dpll(clauses, num_clauses, assignments, num_vars)) {
-        printf("Recursion successful with variable %d set to true. Returning: true\n", var);
+        //printf("Recursion successful with variable %d set to true. Returning: true\n", var);
         insert(assignments, num_vars, true);
         return true;
     }
 
     // Try assigning false
-    printf("Setting variable %d to false and attempting recursion.\n", var);
+    //printf("Setting variable %d to false and attempting recursion.\n", var);
     assignments[var] = 0;
     if (dpll(clauses, num_clauses, assignments, num_vars)) {
-        printf("Recursion successful with variable %d set to false. Returning: true\n", var);
+       //printf("Recursion successful with variable %d set to false. Returning: true\n", var);
         insert(assignments, num_vars, true);
         return true;
     }
 
     // Backtrack
-    printf("Backtracking on variable %d. Setting to unassigned (-1).\n", var);
+    //printf("Backtracking on variable %d. Setting to unassigned (-1).\n", var);
     assignments[var] = -1;
-    if (dpll(clauses, num_clauses, assignments, num_vars)) {
-        printf("Backtracking successful with variable %d set to -1. Returning: true\n", var);
-        insert(assignments, num_vars, true);
-        return true;
-    }
-    insert(assignments, num_vars, false);
-    printf("Backtracked completely on variable %d. Returning: false\n", var);
+    insert(assignments, num_vars, true);
+    //printf("Backtracked completely on variable %d. Returning: false\n", var);
     return false;
 }
 
@@ -224,7 +219,7 @@ int main(int argc, char *argv[]) {
         printf("Unsatisfiable\n");
     }
 
-    printf("Time taken: %.6f seconds\n", elapsed_time);
+    //printf("Time taken: %.6f seconds\n", elapsed_time);
 
     // Free memory
     for (int i = 0; i < num_clauses; i++) {
