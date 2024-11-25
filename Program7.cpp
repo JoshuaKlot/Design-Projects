@@ -1,45 +1,45 @@
+//Joshua Klotzkin
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
 #include <time.h>
 
-// Define a hash map entry for memoization
 typedef struct DPEntry {
-    char *assignment_str;  // Store the entire assignment as a string
+    unsigned long long hash_value;
     bool result;
-    struct DPEntry *next;  // Handle collisions via chaining
+    struct DPEntry *next;
 } DPEntry;
 
-#define HASH_MAP_SIZE 100003  // A large prime number for hash map size
+#define HASH_MAP_SIZE 100003  // Large prime for hash map size
 
 DPEntry *hash_map[HASH_MAP_SIZE];  // Global hash map
 
 // Hash function
-unsigned long long hash(const char *assignment_str) {
+unsigned long long hash(int *assignments, int num_vars) {
     unsigned long long hash_value = 0;
-    while (*assignment_str) {
-        hash_value = (hash_value * 31) + *assignment_str++;
+    for (int i = 0; i < num_vars; i++) {
+        hash_value = (hash_value * 31) + (assignments[i] + 1);  // Encode -1, 0, 1 as 0, 1, 2
     }
     return hash_value % HASH_MAP_SIZE;
 }
 
 // Insert into hash map
-void insert(const char *assignment_str, bool result) {
-    unsigned long long h = hash(assignment_str);
+void insert(int *assignments, int num_vars, bool result) {
+    unsigned long long h = hash(assignments, num_vars);
     DPEntry *new_entry = (DPEntry *)malloc(sizeof(DPEntry));
-    new_entry->assignment_str = strdup(assignment_str);  // Store a copy of the assignment string
+    new_entry->hash_value = h;
     new_entry->result = result;
     new_entry->next = hash_map[h];
     hash_map[h] = new_entry;
 }
 
 // Search in hash map
-bool search(const char *assignment_str, bool *result) {
-    unsigned long long h = hash(assignment_str);
+bool search(int *assignments, int num_vars, bool *result) {
+    unsigned long long h = hash(assignments, num_vars);
     DPEntry *current = hash_map[h];
     while (current) {
-        if (strcmp(current->assignment_str, assignment_str) == 0) {
+        if (current->hash_value == h) {
             *result = current->result;
             return true;
         }
@@ -48,28 +48,19 @@ bool search(const char *assignment_str, bool *result) {
     return false;
 }
 
-// Create a string representation of the current assignment
-char *get_assignment_str(int *assignments, int num_vars) {
-    char *assignment_str = (char *)malloc(num_vars + 1);  // Extra byte for null terminator
-    for (int i = 0; i < num_vars; i++) {
-        assignment_str[i] = (assignments[i] == 1) ? '1' : (assignments[i] == 0 ? '0' : 'X');  // 'X' for unassigned
-    }
-    assignment_str[num_vars] = '\0';
-    return assignment_str;
-}
-
-// Clause evaluation functions (unchanged)
+// Evaluate a single clause
 bool evaluate_clause(int clause[3], int *assignments) {
     for (int i = 0; i < 3; i++) {
         int var = abs(clause[i]);
         int value = assignments[var - 1];
         if ((clause[i] > 0 && value == 1) || (clause[i] < 0 && value == 0)) {
-            return true;  // Clause satisfied
+            return true;
         }
     }
-    return false;  // Clause not satisfied
+    return false;
 }
 
+// Check if all clauses are satisfied
 bool all_clauses_satisfied(int **clauses, int num_clauses, int *assignments) {
     for (int i = 0; i < num_clauses; i++) {
         if (!evaluate_clause(clauses[i], assignments)) {
@@ -79,86 +70,114 @@ bool all_clauses_satisfied(int **clauses, int num_clauses, int *assignments) {
     return true;
 }
 
+// Check for unsatisfied clauses
 bool any_clause_unsatisfied(int **clauses, int num_clauses, int *assignments) {
     for (int i = 0; i < num_clauses; i++) {
-        bool unsat = true;
-        for (int j = 0; j < 3; j++) {
-            int var = abs(clauses[i][j]);
-            int value = assignments[var - 1];
-            if ((clauses[i][j] > 0 && value == 1) || (clauses[i][j] < 0 && value == 0)) {
-                unsat = false;
-                break;
+        if (!evaluate_clause(clauses[i], assignments)) {
+            bool partially_unsat = true;
+            for (int j = 0; j < 3; j++) {
+                int var = abs(clauses[i][j]);
+                //printf("Evaluating var %d of clause #%d currently %d\n",clauses[i][j],i+1,assignments[var - 1]);
+                if (assignments[var - 1] == -1) {
+                    partially_unsat = false;
+                    break;
+                }
             }
-            if (value == -1) {
-                unsat = false;
-                break;
-            }
+            if (partially_unsat) return true;
         }
-        if (unsat) return true;
     }
     return false;
 }
 
-// DPLL algorithm (modified for full assignment state tracking)
+// Most Constrained Variable heuristic
+int select_most_constrained_variable(int **clauses, int num_clauses, int *assignments, int num_vars) {
+    int *freq = (int *)calloc(num_vars, sizeof(int));
+
+    // Count frequency of unassigned variables in unresolved clauses
+    for (int i = 0; i < num_clauses; i++) {
+        for (int j = 0; j < 3; j++) {
+            int var = abs(clauses[i][j]) - 1;
+            if (assignments[var] == -1) {
+                freq[var]++;
+            }
+        }
+    }
+
+    // Find the variable with the highest frequency
+    int max_freq = -1;
+    int chosen_var = -1;
+    for (int i = 0; i < num_vars; i++) {
+        if (assignments[i] == -1 && freq[i] >= max_freq) {
+            max_freq = freq[i];
+            chosen_var = i;
+        }
+    }
+
+    free(freq);
+    printf("%d is currently the most problemmatic\n",chosen_var+1);
+    return chosen_var;
+}
+
+// DPLL algorithm with memoization and heuristic
 bool dpll(int **clauses, int num_clauses, int *assignments, int num_vars) {
-    // Create a string representation of the current assignment
-    char *assignment_str = get_assignment_str(assignments, num_vars);
-    printf("now checking assignment str %s\n",assignment_str);
     // Check memoized result
     bool result;
-    if (search(assignment_str, &result)) {
-        free(assignment_str);  // Don't forget to free memory
+    if (search(assignments, num_vars, &result)) {
+        printf("Memoized result found for current assignment. Returning: %s\n", result ? "true" : "false");
         return result;
     }
 
     // Base cases
     if (all_clauses_satisfied(clauses, num_clauses, assignments)) {
-        insert(assignment_str, true);
-        free(assignment_str);
+        printf("All clauses satisfied with current assignment. Returning: true\n");
+        insert(assignments, num_vars, true);
         return true;
     }
     if (any_clause_unsatisfied(clauses, num_clauses, assignments)) {
-        // insert(assignment_str, false);
-        // free(assignment_str);
+        printf("At least one clause unsatisfied with current assignment. Returning: false\n");
+        //insert(assignments, num_vars, false);
         return false;
     }
 
-    // Find the next unassigned variable
-    int var = -1;
-    for (int i = 0; i < num_vars; i++) {
-        if (assignments[i] == -1) {
-            var = i;
-            break;
-        }
-    }
+    // Select the next variable using heuristic
+    int var = select_most_constrained_variable(clauses, num_clauses, assignments, num_vars);
+
     if (var == -1) {
-        //insert(assignment_str, false);
-        //free(assignment_str);
-        return false;  // No unassigned variables
+        printf("No variable selected. Likely no unassigned variables remain. Returning: false\n");
+        return false;
     }
 
     // Try assigning true
+    printf("Setting variable %d to true and attempting recursion.\n", var);
     assignments[var] = 1;
     if (dpll(clauses, num_clauses, assignments, num_vars)) {
-        insert(assignment_str, true);
-        free(assignment_str);
+        printf("Recursion successful with variable %d set to true. Returning: true\n", var);
+        insert(assignments, num_vars, true);
         return true;
     }
 
     // Try assigning false
+    printf("Setting variable %d to false and attempting recursion.\n", var);
     assignments[var] = 0;
     if (dpll(clauses, num_clauses, assignments, num_vars)) {
-        insert(assignment_str, true);
-        free(assignment_str);
+        printf("Recursion successful with variable %d set to false. Returning: true\n", var);
+        insert(assignments, num_vars, true);
         return true;
     }
 
     // Backtrack
+    printf("Backtracking on variable %d. Setting to unassigned (-1).\n", var);
     assignments[var] = -1;
-    //insert(assignment_str, false);
-    //free(assignment_str);
+    if (dpll(clauses, num_clauses, assignments, num_vars)) {
+        printf("Backtracking successful with variable %d set to -1. Returning: true\n", var);
+        insert(assignments, num_vars, true);
+        return true;
+    }
+    insert(assignments, num_vars, false);
+    printf("Backtracked completely on variable %d. Returning: false\n", var);
     return false;
 }
+
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -186,17 +205,13 @@ int main(int argc, char *argv[]) {
 
     // Initialize assignments (-1 means unassigned)
     int *assignments = (int *)malloc(num_vars * sizeof(int));
-    for (int i = 0; i < num_vars; i++) {
-        assignments[i] = -1;
-    }
+    memset(assignments, -1, num_vars * sizeof(int));
 
-    // Start the timer
     clock_t start_time = clock();
 
     // Solve using DPLL
     bool is_satisfiable = dpll(clauses, num_clauses, assignments, num_vars);
 
-    // Stop the timer
     clock_t end_time = clock();
     double elapsed_time = (double)(end_time - start_time) / CLOCKS_PER_SEC;
 
@@ -209,7 +224,6 @@ int main(int argc, char *argv[]) {
         printf("Unsatisfiable\n");
     }
 
-    // Print the elapsed time
     printf("Time taken: %.6f seconds\n", elapsed_time);
 
     // Free memory
